@@ -33,6 +33,8 @@ func main() {
 
 	mux.HandleFunc("POST /api/v1/auth/register", handlers.Register(pool))
 	mux.HandleFunc("POST /api/v1/auth/login", handlers.Login(pool))
+	mux.HandleFunc("POST /api/v1/auth/logout", handlers.Logout)
+	mux.HandleFunc("GET /api/v1/me", auth.Middleware(handlers.Me(pool)))
 
 	port := os.Getenv("PORT")
 	if port == "" {

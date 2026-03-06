@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/munster-bunkum/bunkum-api/internal/auth"
 	"github.com/munster-bunkum/bunkum-api/internal/db"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -43,7 +44,6 @@ func Register(pool *pgxpool.Pool) http.HandlerFunc {
 
 		user, err := db.CreateUser(r.Context(), pool, req.Username, req.Email, string(hash))
 		if err != nil {
-			// Postgres unique violation code is 23505
 			if isUniqueViolation(err) {
 				jsonError(w, "username or email already taken", http.StatusUnprocessableEntity)
 				return
@@ -58,10 +58,8 @@ func Register(pool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		jsonResponse(w, http.StatusCreated, map[string]any{
-			"token": token,
-			"user":  user,
-		})
+		setTokenCookie(w, token)
+		jsonResponse(w, http.StatusCreated, map[string]any{"user": user})
 	}
 }
 
@@ -94,9 +92,44 @@ func Login(pool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		jsonResponse(w, http.StatusOK, map[string]any{
-			"token": token,
-			"user":  user,
-		})
+		setTokenCookie(w, token)
+		jsonResponse(w, http.StatusOK, map[string]any{"user": user})
 	}
+}
+
+func Logout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   os.Getenv("APP_ENV") == "production",
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   -1,
+	})
+	jsonResponse(w, http.StatusOK, map[string]string{"message": "logged out"})
+}
+
+func Me(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims := auth.ClaimsFromContext(r.Context())
+		user, err := db.FindUserByID(r.Context(), pool, claims.UserID)
+		if err != nil {
+			jsonError(w, "user not found", http.StatusNotFound)
+			return
+		}
+		jsonResponse(w, http.StatusOK, map[string]any{"user": user})
+	}
+}
+
+func setTokenCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    token,
+		HttpOnly: true,
+		Secure:   os.Getenv("APP_ENV") == "production",
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   7 * 24 * 3600,
+	})
 }
