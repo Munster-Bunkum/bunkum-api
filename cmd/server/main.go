@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/munster-bunkum/bunkum-api/internal/db"
 	"github.com/munster-bunkum/bunkum-api/internal/handlers"
+	"github.com/munster-bunkum/bunkum-api/internal/auth"
 )
 
 func main() {
