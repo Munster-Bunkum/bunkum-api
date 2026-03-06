@@ -39,6 +39,11 @@ func main() {
 		port = "8080"
 	}
 
+	origin := os.Getenv("ALLOWED_ORIGIN")
+	if origin == "" {
+		origin = "*"
+	}
+
 	log.Printf("listening on :%s", port)
-	log.Fatal(http.ListenAndServe(":"+port, mux))
+	log.Fatal(http.ListenAndServe(":"+port, handlers.CORS(origin, mux)))
 }
