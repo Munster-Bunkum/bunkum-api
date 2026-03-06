@@ -1,0 +1,51 @@
+service: bunkum_api
+
+image: munster-bunkum/bunkum-api
+
+servers:
+  web:
+    - 192.168.0.151
+
+registry:
+  server: ghcr.io
+  username: munster-bunkum
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+proxy:
+  app_port: 8080
+  healthcheck:
+    path: /health
+
+env:
+  secret:
+    - POSTGRES_PASSWORD
+    - JWT_SECRET
+  clear:
+    DB_HOST: bunkum_api-db
+    DB_USER: bunkum_api
+    DB_NAME: bunkum_api_production
+
+ssh:
+  user: rikson
+
+builder:
+  arch: arm64
+
+aliases:
+  logs: app logs -f
+  shell: app exec --interactive --reuse "bash"
+
+accessories:
+  db:
+    image: postgres:17
+    host: 192.168.0.151
+    port: "127.0.0.1:5432:5432"
+    env:
+      secret:
+        - POSTGRES_PASSWORD
+      clear:
+        POSTGRES_USER: bunkum_api
+        POSTGRES_DB: bunkum_api_production
+    directories:
+      - data:/var/lib/postgresql/data
