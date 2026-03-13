@@ -7,9 +7,10 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
+	"github.com/munster-bunkum/bunkum-api/internal/auth"
 	"github.com/munster-bunkum/bunkum-api/internal/db"
 	"github.com/munster-bunkum/bunkum-api/internal/handlers"
-	"github.com/munster-bunkum/bunkum-api/internal/auth"
+	"github.com/munster-bunkum/bunkum-api/internal/hub"
 )
 
 func main() {
@@ -27,6 +28,8 @@ func main() {
 		log.Fatalf("migrations failed: %v", err)
 	}
 
+	h := hub.New(pool)
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /", handlers.Health)
@@ -36,6 +39,14 @@ func main() {
 	mux.HandleFunc("POST /api/v1/auth/login", handlers.Login(pool))
 	mux.HandleFunc("POST /api/v1/auth/logout", handlers.Logout)
 	mux.HandleFunc("GET /api/v1/me", auth.Middleware(handlers.Me(pool)))
+
+	mux.HandleFunc("GET /api/v1/worlds", auth.Middleware(handlers.ListWorlds(pool)))
+	mux.HandleFunc("POST /api/v1/worlds/enter", auth.Middleware(handlers.EnterWorld(pool)))
+
+	// WebSocket: client connects here after POST /worlds/enter succeeds.
+	// Auth middleware reads the JWT from ?token= query param (Godot can't set
+	// arbitrary headers during the WS handshake, so we use a query param instead).
+	mux.HandleFunc("GET /ws/worlds/{name}", auth.Middleware(handlers.WorldSocket(h)))
 
 	port := os.Getenv("PORT")
 	if port == "" {

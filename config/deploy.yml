@@ -25,7 +25,7 @@ env:
     DB_HOST: bunkum_api-db
     DB_USER: bunkum_api
     DB_NAME: bunkum_api_production
-    APP_ENV: test
+    APP_ENV: production
 
 ssh:
   user: rikson
